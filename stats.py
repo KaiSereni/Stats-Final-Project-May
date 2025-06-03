@@ -5,7 +5,7 @@ from statsmodels.stats.proportion import proportions_ztest
 
 JSON_FILE_PATH = 'out.json'
 GDP_THRESHOLD = 82769 # US GDP per capita
-US_MEAN_AGE = 39.6
+US_MEAN_AGE = 40
 OREGON_STATE_KEY = "Oregon"
 ALPHA_LEVEL = float(input("What should the alpha level be? (ex: 0.05)\n"))
 
