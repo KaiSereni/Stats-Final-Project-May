@@ -15,11 +15,6 @@ age_df = age_tables[0]
 # For GDP, the third table contains GDP per capita by state
 gdp_df = gdp_tables[0]
 
-# Print all column tuples to debug
-print("All GDP column tuples:")
-for col in gdp_df.columns:
-    print(repr(col))
-
 # Clean up age_df
 age_df = age_df.rename(columns={age_df.columns[1]: "State", age_df.columns[2]: "Median Age"})
 age_df = age_df[["State", "Median Age"]]
@@ -33,8 +28,6 @@ age_df = age_df[age_df["State"].isin([
     'Virginia', 'Washington', 'West Virginia', 'Wisconsin', 'Wyoming', 'District of Columbia'
 ])]
 age_df = age_df.set_index("State")
-
-print(gdp_df.columns[7])
 
 # Clean up gdp_df
 state_col = ('State or federal district', 'State or federal district')
@@ -59,3 +52,5 @@ for state, row in merged.iterrows():
 # Output as JSON
 with open('out.json', 'w') as f:
     json.dump(result, f)
+
+print("Data saved to ./out.json")
