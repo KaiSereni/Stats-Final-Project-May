@@ -4,10 +4,14 @@ from scipy import stats
 from statsmodels.stats.proportion import proportions_ztest
 
 JSON_FILE_PATH = 'out.json'
-GDP_THRESHOLD = 82769
+GDP_THRESHOLD = 82769 # US GDP per capita
 US_MEAN_AGE = 39.6
 OREGON_STATE_KEY = "Oregon"
-ALPHA_LEVEL = 0.05
+ALPHA_LEVEL = float(input("What should the alpha level be? (ex: 0.05)\n"))
+
+if not (ALPHA_LEVEL < 1 and ALPHA_LEVEL > 0):
+    print("Invalid alpha level!")
+    exit()
 
 def load_data(filepath):
     """Loads state data from a JSON file."""
@@ -72,40 +76,42 @@ def perform_z_test_gdp_proportion(state_data):
             print(f"There is not significant evidence that the true proportion of states with GDP per capita > ${GDP_THRESHOLD:,} differs from {hypothesized_proportion:.2f}.")
     except Exception as e:
         print(f"Error during z-test calculation: {e}")
-
-
-def analyze_oregon_age(state_data):
+    
+def perform_one_sample_t_test_age(state_data):
     """
-    Analyzes Oregon's average age in comparison to the US average age.
-    Explains limitations of a direct one-sample t-test on a single value.
+    Performs a one-sample t-test to compare state average ages against the US mean age.
     """
-    print(f"\n--- 2. Analysis of {OREGON_STATE_KEY}'s Average Age vs. US Average Age ({US_MEAN_AGE} years) ---")
+    print("\n--- 2. One-Sample T-Test for State Average Ages vs US Mean ---")
     if not state_data:
-        print("Cannot perform analysis: No data loaded.")
+        print("Cannot perform test: No data loaded.")
         return
 
-    if OREGON_STATE_KEY not in state_data or 'avg_age' not in state_data[OREGON_STATE_KEY]:
-        print(f"Cannot perform analysis: Data for '{OREGON_STATE_KEY}' or its 'avg_age' not found in the JSON.")
+    ages = [details['avg_age'] for details in state_data.values() if 'avg_age' in details]
+    if not ages:
+        print("Cannot perform test: No 'avg_age' data found in states.")
         return
 
-    oregon_avg_age = state_data[OREGON_STATE_KEY]['avg_age']
-    print(f"{OREGON_STATE_KEY}'s average age: {oregon_avg_age:.1f} years")
-    print(f"US average age (population mean): {US_MEAN_AGE:.1f} years")
+    print(f"US Mean Age (μ0): {US_MEAN_AGE:.2f} years")
+    print(f"Number of states with age data: {len(ages)}")
+    print(f"Sample mean age: {np.mean(ages):.2f} years")
+    print(f"Sample standard deviation: {np.std(ages, ddof=1):.2f} years")
 
-    if oregon_avg_age < US_MEAN_AGE:
-        comparison = "lower than"
-    elif oregon_avg_age > US_MEAN_AGE:
-        comparison = "higher than"
-    else:
-        comparison = "equal to"
-    print(f"Direct comparison: {OREGON_STATE_KEY}'s average age is {comparison} the US average age.")
+    # Perform the t-test
+    # H0: μ = US_MEAN_AGE
+    # HA: μ ≠ US_MEAN_AGE (two-sided)
+    try:
+        t_stat, p_value = stats.ttest_1samp(ages, US_MEAN_AGE)
+        print(f"T-statistic: {t_stat:.4f}")
+        print(f"P-value: {p_value:.4f}")
 
-    print("\nNote on the requested One-Sample T-Test:")
-    print("A one-sample t-test is typically used to compare the mean of a *sample* of data (which has inherent variability and a standard deviation) against a known population mean.")
-    print(f"The provided data for {OREGON_STATE_KEY} is a single 'avg_age' value ({oregon_avg_age:.1f}).")
-    print("To perform a meaningful one-sample t-test for Oregon's age, we would ideally need a sample of individual age data points from Oregon to calculate a sample mean and sample standard deviation.")
-    print("Applying a t-test directly to a single summary statistic (like a pre-calculated average without its own variance or sample size) is not standard practice, as the concept of sample variance required for the t-statistic is undefined for a single point.")
-    print("Therefore, while we can compare the values directly, a formal t-test for significance on this single value against the population mean cannot be robustly performed without more detailed data from Oregon.")
+        if p_value < ALPHA_LEVEL:
+            print(f"Conclusion: At alpha={ALPHA_LEVEL}, we reject the null hypothesis.")
+            print(f"There is significant evidence that the true mean age of states differs from the US mean age of {US_MEAN_AGE:.2f} years.")
+        else:
+            print(f"Conclusion: At alpha={ALPHA_LEVEL}, we fail to reject the null hypothesis.")
+            print(f"There is not significant evidence that the true mean age of states differs from the US mean age of {US_MEAN_AGE:.2f} years.")
+    except Exception as e:
+        print(f"Error during t-test calculation: {e}")
 
 def perform_chi_squared_test_age_gdp(state_data):
     """
@@ -171,6 +177,50 @@ def perform_chi_squared_test_age_gdp(state_data):
         print(f"Error during Chi-squared test: {e}")
         print("This might occur if the contingency table has sums of zero in rows/columns, often due to very small sample size or skewed data distribution after categorization.")
 
+def perform_two_sample_t_test_age_by_gdp(state_data):
+    """
+    Performs a two-sample t-test to compare average ages between high and low GDP states.
+    """
+    print("\n--- 4. Two-Sample T-Test for Age Comparison between High and Low GDP States ---")
+    if not state_data:
+        print("Cannot perform test: No data loaded.")
+        return
+
+    high_gdp_ages = []
+    low_gdp_ages = []
+    
+    for details in state_data.values():
+        if 'avg_age' in details and 'gdp_per_capita' in details:
+            if details['gdp_per_capita'] > GDP_THRESHOLD:
+                high_gdp_ages.append(details['avg_age'])
+            else:
+                low_gdp_ages.append(details['avg_age'])
+
+    if not high_gdp_ages or not low_gdp_ages:
+        print("Cannot perform test: Insufficient data for both high and low GDP states.")
+        return
+
+    print(f"Number of high GDP states: {len(high_gdp_ages)}")
+    print(f"Number of low GDP states: {len(low_gdp_ages)}")
+    print(f"High GDP states mean age: {np.mean(high_gdp_ages):.2f} years")
+    print(f"Low GDP states mean age: {np.mean(low_gdp_ages):.2f} years")
+
+    # Perform the t-test
+    # H0: μ_high = μ_low
+    # HA: μ_high ≠ μ_low (two-sided)
+    try:
+        t_stat, p_value = stats.ttest_ind(high_gdp_ages, low_gdp_ages, equal_var=False)
+        print(f"T-statistic: {t_stat:.4f}")
+        print(f"P-value: {p_value:.4f}")
+
+        if p_value < ALPHA_LEVEL:
+            print(f"Conclusion: At alpha={ALPHA_LEVEL}, we reject the null hypothesis.")
+            print("There is significant evidence that the mean age differs between high and low GDP states.")
+        else:
+            print(f"Conclusion: At alpha={ALPHA_LEVEL}, we fail to reject the null hypothesis.")
+            print("There is not significant evidence that the mean age differs between high and low GDP states.")
+    except Exception as e:
+        print(f"Error during t-test calculation: {e}")
 
 def main():
     """Main function to run the statistical analyses."""
@@ -179,8 +229,9 @@ def main():
 
     if state_data:
         perform_z_test_gdp_proportion(state_data)
-        analyze_oregon_age(state_data)
+        perform_one_sample_t_test_age(state_data)
         perform_chi_squared_test_age_gdp(state_data)
+        perform_two_sample_t_test_age_by_gdp(state_data)
     else:
         print("Script cannot proceed due to data loading issues.")
     
