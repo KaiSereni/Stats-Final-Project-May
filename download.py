@@ -39,9 +39,9 @@ print(gdp_df.columns[7])
 # Clean up gdp_df
 state_col = ('State or federal district', 'State or federal district')
 gdp_per_capita_col = ('Nominal GDP per capita[1][2]', '2024')
-gdp_df = gdp_df[[state_col, gdp_per_capita_col]]
+gdp_df = gdp_df[[state_col, gdp_per_capita_col]].copy()  # Create an explicit copy
 gdp_df.columns = ['State', 'GDP per Capita']
-gdp_df["GDP per Capita"] = gdp_df["GDP per Capita"].replace('[\$,]', '', regex=True).astype(float)
+gdp_df.loc[:, "GDP per Capita"] = gdp_df["GDP per Capita"].replace('[\$,]', '', regex=True).astype(float)
 gdp_df = gdp_df[gdp_df["State"].isin(age_df.index)]
 gdp_df = gdp_df.set_index("State")
 
